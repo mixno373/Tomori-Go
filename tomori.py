@@ -26,7 +26,7 @@ from config.settings import settings
 
 __name__ = "Tomori"
 __author__ = "Pineapple Cookie"
-__version__ = "5.3.0 Go"
+__version__ = "5.3.1 Go"
 
 SHARD_COUNT = 4
 
@@ -349,7 +349,7 @@ class Tomori(commands.AutoShardedBot):
                         avatar=await self.user.avatar_url_as(format="png").read()
                     )]
 
-                name = self.user.name
+                name = self.user.display_name
                 url = str(self.user.avatar_url_as(format="png", size=512))
 
                 if ctx:
@@ -508,12 +508,10 @@ class Tomori(commands.AutoShardedBot):
     def run(self, token):
         self.loop.run_until_complete(self._init_database())
         self.remove_command("help")
-        channel = self.get_channel(637611803421048833)
         for extension in settings["extensions"]:
             try:
                 self.load_extension(extension)
             except Exception as e:
-                self.loop.run_until_complete(self.true_send(channel=channel, content=f"[x] Can't load Cog because: {e}"))
                 logger.info(f"[x] Can't load Cog because: {e}")
         # quart_app.client = self
         # self.quart_thread = threading.Thread(target=quart_app.run, args=["54.37.18.227", 8080], kwargs={

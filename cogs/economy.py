@@ -480,23 +480,30 @@ class Economy(commands.Cog):
                 },
                 order = {
                     "condition::bigint": False,
-                    "id": True
+                    "name::bigint": True
                 },
                 limit = 25,
                 offset = (page-1)*25
             )
         if not data:
-            await bot.true_send_error(ctx=ctx, error="global_list_is_empty")
+            await bot.true_send_error(ctx=ctx, channel=ctx.channel, error="global_list_is_empty")
             return
 
         delete_roles = []
         shop_roles = []
         for row in data:
-            role = ctx.guild.get_role(int(row["name"]))
+            role = None
+            try:
+                role = ctx.guild.get_role(int(row["name"]))
+            except discord.Forbidden:
+                await bot.true_send_error(ctx=ctx, channel=ctx.channel, error="cant_get_role")
+            except Exception as e:
+                logger.info(f"shop: Unknown exception ({e}) - {ctx.guild.name} [{ctx.guild.id}] | User: {ctx.author.mention}")
+                await bot.true_send_error(ctx=ctx, channel=ctx.channel, error="default")
             if role:
                 shop_roles.append(f"{role.mention}**\n{int(row['condition'])%999999999} {ctx.emoji}")
             else:
-                delete_roles.append(row["id"])
+                delete_roles.append(str(row["id"]))
         if delete_roles:
             await bot.db.execute(f"DELETE FROM mods WHERE id in ({','.join(delete_roles)})")
 
@@ -549,7 +556,7 @@ class Economy(commands.Cog):
                 },
                 order = {
                     "condition::bigint": False,
-                    "id": True
+                    "name::bigint": True
                 },
                 offset=name-1
             )
@@ -607,11 +614,11 @@ class Economy(commands.Cog):
                 role=role.mention
             )
         except discord.Forbidden:
-            await self.bot.true_send_error(ctx=ctx, channel=ctx.channel, error="economy_role_not_permission", who=member.mention, role=role.mention)
+            await bot.true_send_error(ctx=ctx, channel=ctx.channel, error="economy_role_not_permission", who=member.mention, role=role.mention)
             return
         except Exception as e:
             logger.info(f"buy: Unknown exception ({e}) - {ctx.guild.name} [{ctx.guild.id}] | User: {ctx.author.mention} | Role: {role.mention}")
-            await self.bot.true_send_error(ctx=ctx, channel=ctx.channel, error="default")
+            await bot.true_send_error(ctx=ctx, channel=ctx.channel, error="default")
             return
 
         await bot.true_send(ctx=ctx, embed=em)

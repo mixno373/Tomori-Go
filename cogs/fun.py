@@ -209,6 +209,7 @@ class Fun(commands.Cog):
         "drink",
         "five",
         "high-five",
+        "highfive",
         "fuck",
         "bite",
         "lick",

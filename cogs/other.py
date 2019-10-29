@@ -398,7 +398,7 @@ class Other(commands.Cog):
         if not ctx: return
         em = ctx.embed.copy()
 
-        em.description = bot.get_locale(ctx.lang, "other_help_desc").format(ctx.const["name"], ctx.const["prefix"])
+        em.description = bot.get_locale(ctx.lang, "other_help_desc").format(ctx.guild.name, ctx.const["prefix"])
 
 
         def add_field(category, commands, limit=5):

@@ -202,6 +202,11 @@ ERRORS = {
                         title="Clear Messages",
                         description="I can't delete messages here.. It's forbidden for me :(",
                         color=COLORS["error"]
+                    ),
+    "cant_get_role": discord.Embed(
+                        title="Find Role",
+                        description="I can't find a role.. It's forbidden for me :(",
+                        color=COLORS["error"]
                     )
 }
 
@@ -301,6 +306,10 @@ ACTIVITIES = {
         "cmd": "five"
     },
     "high-five": {
+        "tenor": "high-five",
+        "cmd": "five"
+    },
+    "highfive": {
         "tenor": "high-five",
         "cmd": "five"
     },
