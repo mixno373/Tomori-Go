@@ -140,7 +140,7 @@ class Admin(commands.Cog):
         return
 
 
-    @commands.command(pass_context=True, name="clear", invoke_without_command=True)
+    @commands.command(pass_context=True, name="clear", aliases=["cl"], invoke_without_command=True)
     @commands.guild_only()
     @commands.cooldown(1, 1, commands.BucketType.user)
     async def clear_(self, ctx, count: int=1, user: discord.Member=None):

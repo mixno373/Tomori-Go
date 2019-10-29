@@ -146,43 +146,7 @@ class Economy(commands.Cog):
 
         amount = amount[:20]
         data = await bot.db.select("cash", "users", where={"id": ctx.author.id, "guild": ctx.guild.id})
-        if data:
-            if amount == 'all':
-                amount = data["cash"]
-            else:
-                amount = int(amount)
-            if data["cash"] < amount:
-                await bot.true_send_error(ctx=ctx, error="global_dont_have_that_much_money", author=tagged_dname(ctx.author))
-                return
-            if amount < 1:
-                await bot.true_send_error(ctx=ctx, error="economy_cant_put_bet_of_zero", author=tagged_dname(ctx.author))
-                return
-
-            chance = random.randint(0, 99)
-            if ctx.badges.boost:
-                chance += 10
-            if chance > 55:
-                if not await bot.check_any_badges(ctx.author, ["nitro", "staff", "partner"]):
-                    amount = int(amount / 2)
-                if amount == 0: amount = 1
-
-                cash = {amount: "+"}
-                em.description = bot.get_locale(ctx.lang, "economy_you_win").format(
-                    author=tagged_dname(ctx.author),
-                    amount=split_int(amount),
-                    emoji=ctx.emoji
-                )
-            else:
-                cash = {amount: "-"}
-                em.description = bot.get_locale(ctx.lang, "economy_you_lose").format(
-                    author=tagged_dname(ctx.author),
-                    amount=split_int(amount),
-                    emoji=ctx.emoji
-                )
-            await bot.db.update({
-                "cash": cash
-            }, "users", where={"id": ctx.author.id, "guild": ctx.guild.id})
-        else:
+        if not data:
             await bot.db.insert({
                 "name": ctx.author.name,
                 "id": ctx.author.id,
@@ -190,6 +154,115 @@ class Economy(commands.Cog):
             }, "users")
             await bot.true_send_error(ctx=ctx, error="global_dont_have_that_much_money", author=tagged_dname(ctx.author))
             return
+
+        if amount == 'all':
+            amount = data["cash"]
+        else:
+            amount = int(amount)
+        if data["cash"] < amount:
+            await bot.true_send_error(ctx=ctx, error="global_dont_have_that_much_money", author=tagged_dname(ctx.author))
+            return
+        if amount < 1:
+            await bot.true_send_error(ctx=ctx, error="economy_cant_put_bet_of_zero", author=tagged_dname(ctx.author))
+            return
+
+        chance = random.randint(0, 99)
+        if ctx.badges.boost:
+            chance += 10
+        if chance > 55:
+            if not await bot.check_any_badges(ctx.author, ["nitro", "staff", "partner"]):
+                amount = int(amount / 2)
+            if amount == 0: amount = 1
+
+            cash = {amount: "+"}
+            em.description = bot.get_locale(ctx.lang, "economy_you_win").format(
+                author=tagged_dname(ctx.author),
+                amount=split_int(amount),
+                emoji=ctx.emoji
+            )
+        else:
+            cash = {amount: "-"}
+            em.description = bot.get_locale(ctx.lang, "economy_you_lose").format(
+                author=tagged_dname(ctx.author),
+                amount=split_int(amount),
+                emoji=ctx.emoji
+            )
+        await bot.db.update({
+            "cash": cash
+        }, "users", where={"id": ctx.author.id, "guild": ctx.guild.id})
+
+        await bot.true_send(ctx=ctx, embed=em)
+        return
+
+
+    @commands.command(pass_context=True, name="flipcoin", aliases=["flip-coin", "coin", "flip", "fc"], invoke_without_command=True)
+    @commands.guild_only()
+    @commands.cooldown(1, 1, commands.BucketType.user)
+    async def flipcoin_(self, ctx, amount: str="all"):
+        bot = self.bot
+        ctx.bot = bot
+
+        ctx = await context_init(ctx, "flip")
+        if not ctx: return
+        em = ctx.embed.copy()
+
+        amount = amount.lower()
+        if not amount or not (amount.isdigit() or amount == 'all'):
+            await bot.true_send_error(ctx=ctx, error="global_not_number", author=tagged_dname(ctx.author))
+            return
+
+        amount = amount[:20]
+        data = await bot.db.select("cash", "users", where={"id": ctx.author.id, "guild": ctx.guild.id})
+        if not data:
+            await bot.db.insert({
+                "name": ctx.author.name,
+                "id": ctx.author.id,
+                "guild": ctx.guild.id
+            }, "users")
+            await bot.true_send_error(ctx=ctx, error="global_dont_have_that_much_money", author=tagged_dname(ctx.author))
+            return
+
+        if amount == 'all':
+            amount = data["cash"]
+        else:
+            amount = int(amount)
+        if data["cash"] < amount:
+            await bot.true_send_error(ctx=ctx, error="global_dont_have_that_much_money", author=tagged_dname(ctx.author))
+            return
+        if amount < 1:
+            await bot.true_send_error(ctx=ctx, error="economy_cant_put_bet_of_zero", author=tagged_dname(ctx.author))
+            return
+
+        chance = random.randint(0, 10)
+        if ctx.badges.boost:
+            chance += 1
+        if chance > 5:
+            if not await bot.check_any_badges(ctx.author, ["nitro", "staff", "partner"]):
+                amount = int(amount / 2)
+            if amount == 0: amount = 1
+
+            cash = {amount: "+"}
+            em.description = bot.get_locale(ctx.lang, "economy_you_win").format(
+                author=tagged_dname(ctx.author),
+                amount=split_int(amount),
+                emoji=ctx.emoji
+            )
+        else:
+            cash = {amount: "-"}
+            em.description = bot.get_locale(ctx.lang, "economy_you_lose").format(
+                author=tagged_dname(ctx.author),
+                amount=split_int(amount),
+                emoji=ctx.emoji
+            )
+        await bot.db.update({
+            "cash": cash
+        }, "users", where={"id": ctx.author.id, "guild": ctx.guild.id})
+
+        # tenor_name = "coin flip"
+        # if ctx.const["anime_gif"]: tenor_name = f"{tenor_name} anime"
+        # gif_url = await bot.get_tenor_gif(tenor_name)
+        gif_url = "https://media1.tenor.com/images/15f6594fba46474d6a2b8ac81786b427/tenor.gif?itemid=6238123"
+        em.set_image(url=gif_url)
 
         await bot.true_send(ctx=ctx, embed=em)
         return
