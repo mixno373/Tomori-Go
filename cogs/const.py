@@ -236,7 +236,7 @@ COMMANDS_LIST = {
                 "timely|timely",
                 "work|work",
                 "br|br",
-                "flipcoin|flipcoin",
+                "flipcoin|flip",
                 # "slots|-",
                 "give|give",
                 "shop|shop"
