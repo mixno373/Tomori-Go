@@ -2,8 +2,7 @@
 
 # Fun
 
-```
-## me
+```me```
 
 Shows user’s profile.
 
@@ -19,4 +18,3 @@ An image with user’s profile
 
 
 * profile
-```
