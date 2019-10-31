@@ -104,7 +104,7 @@ class Other(commands.Cog):
                                 **[Site]({self.website_url})**
 
                                 For any questions message to <@499937748862500864>"""
-        em.set_footer(text=f"{bot.t_name} {bot.t_version}")
+        em.set_footer(text=f"{bot.t_name} {bot.t_version} | Uptime: {format_seconds((datetime.utcnow() - bot.launch_time).total_seconds())}")
 
         await bot.true_send(ctx=ctx, embed=em)
         return
@@ -483,7 +483,8 @@ class Other(commands.Cog):
         if len(embed.fields) != 25:
             embeds.append(embed)
 
-        embeds[-1].set_footer(text=tagged_dname(ctx.author), icon_url=str(ctx.author.avatar_url))
+        embeds[0].set_author(name=tagged_dname(ctx.author), icon_url=str(ctx.author.avatar_url))
+        embeds[-1].set_footer(text="Uptime: "+format_seconds((datetime.utcnow() - bot.launch_time).total_seconds()))
         embeds[0].title = "Command Activity"
         embeds[0].description = f"Total commands: ``{split_int(total_count)}``"
 
