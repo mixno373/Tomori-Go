@@ -2,19 +2,18 @@
 
 # Fun
 
-## **me**
 
-Shows user’s profile.
+* **me**
 
-### Arguments
+## Arguments
 
 user: `Member`
 
-### Returns
+## Returns
 
 An image with user’s profile
 
-### Aliases
+## Aliases
 
 
 * profile
