@@ -2,7 +2,7 @@
 
 # Fun
 
-```me```
+## **me**
 
 Shows user’s profile.
 
