@@ -55,6 +55,17 @@ class Fun(commands.Cog):
     @commands.guild_only()
     @commands.cooldown(1, 10, commands.BucketType.user)
     async def me_(self, ctx, user: discord.Member=None):
+        """Shows user's profile.
+
+        Arguments
+        -----------
+        user: :class:`Member`
+
+        Returns
+        ---------
+        An image with user's profile
+        """
+
         bot = self.bot
         ctx.bot = bot
 

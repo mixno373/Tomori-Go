@@ -483,10 +483,14 @@ class Other(commands.Cog):
         if len(embed.fields) != 25:
             embeds.append(embed)
 
+        alive_seconds = (datetime.utcnow() - bot.launch_time).total_seconds()
+        minutes = alive_seconds / 60 + 1
+        cmds_per_minute = round(total_count / minutes, 2)
+
         embeds[0].set_author(name=tagged_dname(ctx.author), icon_url=str(ctx.author.avatar_url))
-        embeds[-1].set_footer(text="Uptime: "+format_seconds((datetime.utcnow() - bot.launch_time).total_seconds()))
+        embeds[-1].set_footer(text="Uptime: "+format_seconds(alive_seconds))
         embeds[0].title = "Command Activity"
-        embeds[0].description = f"Total commands: ``{split_int(total_count)}``"
+        embeds[0].description = f"Total commands: ``{split_int(total_count)}`` | `{cmds_per_minute}/min`"
 
         await bot.true_send(ctx=ctx, embeds=embeds, nitro=True)
         return
@@ -613,14 +617,14 @@ class Other(commands.Cog):
         react = re.sub(r'\D', '', emoji)
         if not react:
             try:
-                react = discord.utils.find(ctx.guild.emojis, name=re.sub(r'[<:>]', '', emoji))
-            except:
-                pass
+                react = discord.utils.get(ctx.guild.emojis, name=re.sub(r'[<:>]', '', emoji))
+            except Exception as e:
+                print(e)
             if not react:
                 try:
-                    react = discord.utils.find(bot.emojis, name=re.sub(r'[<:>]', '', emoji))
-                except:
-                    pass
+                    react = discord.utils.get(bot.emojis, name=re.sub(r'[<:>]', '', emoji))
+                except Exception as e:
+                    print("---", e)
             if react:
                 react = str(react)
         else:
@@ -636,6 +640,7 @@ class Other(commands.Cog):
                 arg="Emoji"
             )
             return
+        emoji = str(react)
         react = str(react).replace("<a:", "<:")
 
         message = None
@@ -685,6 +690,11 @@ class Other(commands.Cog):
             emoji=react,
             message=message.id
         )
+
+        try:
+            await message.add_reaction(emoji)
+        except:
+            pass
 
         await bot.true_send(ctx=ctx, embed=em)
         return

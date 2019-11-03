@@ -198,7 +198,7 @@ class Economy(commands.Cog):
     @commands.command(pass_context=True, name="flipcoin", aliases=["flip-coin", "coin", "flip", "fc"], invoke_without_command=True)
     @commands.guild_only()
     @commands.cooldown(1, 1, commands.BucketType.user)
-    async def flipcoin_(self, ctx, amount: str="all"):
+    async def flipcoin_(self, ctx, amount: str="all", side: str="h"):
         bot = self.bot
         ctx.bot = bot
 
@@ -412,7 +412,7 @@ class Economy(commands.Cog):
         return
 
 
-    @commands.command(pass_context=True, name="gift", invoke_without_command=True)
+    @commands.command(pass_context=True, name="gift", aliases=["pay"], invoke_without_command=True)
     @commands.guild_only()
     @commands.cooldown(1, 1, commands.BucketType.user)
     async def gift_(self, ctx, amount: int=373):
