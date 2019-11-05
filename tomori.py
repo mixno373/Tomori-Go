@@ -26,7 +26,7 @@ from config.settings import settings
 
 __name__ = "Tomori"
 __author__ = "Pineapple Cookie"
-__version__ = "5.5.5 Go"
+__version__ = "5.6.0 Go"
 
 SHARD_COUNT = 4
 
@@ -209,6 +209,59 @@ class Tomori(commands.AutoShardedBot):
             await asyncio.sleep(600)
 
 
+    async def guild_stats_handling(self):
+        while not self.is_closed():
+            data = True
+            offset = 0
+            while data:
+                data = await self.db.fetch(f"SELECT * FROM mods WHERE type='guild_stats' ORDER BY id ASC LIMIT 25 OFFSET {offset}")
+                if not data: break
+                offset += 25
+
+                deleted_rows = []
+                for row in data:
+                    guild = self.get_guild(row["guild_id"])
+                    channel = self.get_channel(int(row["name"]))
+
+                    if not guild or not channel:
+                        deleted_rows.append(str(row["id"]))
+                        continue
+
+                    m_all = guild.member_count
+                    m_online = [1 if m.status == discord.Status.online and not m.bot else 0 for m in guild.members].count(1)
+                    m_offline = [1 if m.status == discord.Status.offline and not m.bot else 0 for m in guild.members].count(1)
+                    m_idle = [1 if m.status == discord.Status.idle and not m.bot else 0 for m in guild.members].count(1)
+                    m_dnd = [1 if m.status == discord.Status.dnd and not m.bot else 0 for m in guild.members].count(1)
+                    m_bots = [1 if m.bot else 0 for m in guild.members].count(1)
+                    m_voices = 0
+                    for voice in guild.voice_channels:
+                        m_voices += len(voice.members)
+
+                    text = row["value"].format(
+                        all=m_all,
+                        online=m_online,
+                        offline=m_offline,
+                        idle=m_idle,
+                        dnd=m_dnd,
+                        bots=m_bots,
+                        voice=m_voices
+                    )
+                    text = text[:100]
+
+                    try:
+                        await channel.edit(name=text, reason="Tomori Guild Stats")
+                    except discord.Forbidden:
+                        pass
+                    except Exception as e:
+                        logger.info(f"guild_stats_handling: Unknown exception ({e}) - {guild.name} [{guild.id}] | Channel: {channel.name} [{channel.id}]")
+
+                    await asyncio.sleep(1)
+
+                if deleted_rows: await self.db.execute(f"DELETE FROM mods WHERE id in ({','.join(deleted_rows)})")
+
+            await asyncio.sleep(1)
+
+
     async def reset_badges(self):
         while not self.is_closed():
             data = await self.db.fetch(f"SELECT * FROM mods WHERE type='reset_badges' AND condition::bigint < {unix_time()} AND condition::bigint > 10")
@@ -245,14 +298,25 @@ class Tomori(commands.AutoShardedBot):
             await asyncio.sleep(COOLDOWNS["hour"])
 
 
+    async def on_resumed(self):
+        self.launch_time = datetime.utcnow()
+        channel = self.get_channel(641280233260974125)
+        if channel: await channel.send(f"ぱいなぴるー君、見ってください。 (v{__version__})")
+
+
     async def on_ready(self):
         print('Logged in as')
         print(self.user.name)
         print(self.user.id)
         print("Started in "+str(datetime.utcnow() - self.launch_time))
         print('------')
+
+        channel = self.get_channel(641280233260974125)
+        if channel: await channel.send(f"おはようございますぱいなぴるー君。(Launch time: {round((datetime.utcnow() - self.launch_time).total_seconds(), 2)} sec | v{__version__})")
+
         self.loop.create_task(self.statuses())
         self.loop.create_task(self.reset_badges())
+        self.loop.create_task(self.guild_stats_handling())
         # self.loop.create_task(mutting())
         # self.loop.create_task(spaming())
 
@@ -280,7 +344,10 @@ class Tomori(commands.AutoShardedBot):
 
 
     async def on_command(self, ctx):
-        self.add_command_activity(ctx.invoked_with)
+        try:
+            self.add_command_activity(ctx.invoked_with)
+        except:
+            pass
 
 
     async def on_command_completion(self, ctx):

@@ -889,6 +889,63 @@ class Other(commands.Cog):
         return
 
 
+    @set_.group(pass_context=True, name="guild", invoke_without_command=True)
+    @commands.guild_only()
+    @commands.cooldown(1, 1, commands.BucketType.user)
+    async def set_guild_(self, ctx):
+        bot = self.bot
+        ctx.bot = bot
+
+        ctx = await context_init(ctx)
+        if not ctx: return
+
+        await bot.true_send_error(ctx=ctx, error="incorrect_argument", arg="value")
+        return
+
+
+    @set_guild_.command(pass_context=True, name="stats", invoke_without_command=True)
+    @commands.guild_only()
+    @commands.cooldown(1, 1, commands.BucketType.user)
+    async def set_guild_stats_(self, ctx, *, value: str):
+        bot = self.bot
+        ctx.bot = bot
+
+        ctx = await context_init(ctx)
+        if not ctx or not is_admin(ctx.author): return
+        em = ctx.embed.copy()
+
+        value = value[:200]
+
+        try:
+            channel = await ctx.guild.create_voice_channel(
+                name="Tomori Guild Stats",
+                overwrites={
+                    ctx.guild.default_role: discord.PermissionOverwrite(read_messages=False, connect=False),
+                    ctx.guild.me: discord.PermissionOverwrite(read_messages=True, connect=True, manage_channels=True)
+                },
+                reason="Tomori Guild Stats"
+            )
+        except discord.Forbidden:
+            await self.true_send_error(ctx=ctx, channel=ctx.channel, error="voice_cant_create")
+            return
+        except Exception as e:
+            logger.info(f"guild_stats_handling: Unknown exception ({e}) - {ctx.guild.name} [{ctx.guild.id}]")
+            return
+
+        await bot.db.insert_update({
+            "guild_id": ctx.guild.id,
+            "type": "guild_stats",
+            "name": str(channel.id),
+            "value": value
+        }, "mods", constraint="uniq_type")
+        em.description = bot.get_locale(ctx.lang, "other_guild_stats_success").format(
+            author=tagged_dname(ctx.author)
+        )
+
+        await bot.true_send(ctx=ctx, embed=em)
+        return
+
+
     @set_.group(pass_context=True, name="bot", invoke_without_command=True)
     @commands.guild_only()
     @commands.cooldown(1, 1, commands.BucketType.user)
