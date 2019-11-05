@@ -195,6 +195,90 @@ class Economy(commands.Cog):
         return
 
 
+    @commands.command(pass_context=True, name="slots", aliases=["slot"], invoke_without_command=True)
+    @commands.guild_only()
+    @commands.cooldown(1, 1, commands.BucketType.user)
+    async def slots_(self, ctx, amount: str="all"):
+        bot = self.bot
+        ctx.bot = bot
+
+        ctx = await context_init(ctx, "slots")
+        if not ctx: return
+        em = ctx.embed.copy()
+
+        amount = amount.lower()
+        if not amount or not (amount.isdigit() or amount == 'all'):
+            await bot.true_send_error(ctx=ctx, error="global_not_number", author=tagged_dname(ctx.author))
+            return
+
+        amount = amount[:20]
+        data = await bot.db.select("cash", "users", where={"id": ctx.author.id, "guild": ctx.guild.id})
+        if not data:
+            await bot.db.insert({
+                "name": ctx.author.name,
+                "id": ctx.author.id,
+                "guild": ctx.guild.id
+            }, "users")
+            await bot.true_send_error(ctx=ctx, error="global_dont_have_that_much_money", author=tagged_dname(ctx.author))
+            return
+
+        if amount == 'all':
+            amount = data["cash"]
+        else:
+            amount = int(amount)
+        if data["cash"] < amount:
+            await bot.true_send_error(ctx=ctx, error="global_dont_have_that_much_money", author=tagged_dname(ctx.author))
+            return
+        if amount < 1:
+            await bot.true_send_error(ctx=ctx, error="economy_cant_put_bet_of_zero", author=tagged_dname(ctx.author))
+            return
+
+        emojis = "🍎🍊🍐🍋🍉🍇🍓🍒"
+
+        a = random.choice(emojis)
+        b = random.choice(emojis)
+        c = random.choice(emojis)
+
+        a_ = random.choice(emojis)
+        b_ = random.choice(emojis)
+        c_ = random.choice(emojis)
+
+        _a = random.choice(emojis)
+        _b = random.choice(emojis)
+        _c = random.choice(emojis)
+
+        if (a == b == c):
+            amount = int(amount * 3)
+            cash = {amount: "+"}
+            result = bot.get_locale(ctx.lang, "economy_you_win")
+        elif (a == b) or (a == c) or (b == c):
+            amount = int(amount * 1.5)
+            cash = {amount: "+"}
+            result = bot.get_locale(ctx.lang, "economy_you_win")
+        else:
+            cash = {amount: "-"}
+            result = bot.get_locale(ctx.lang, "economy_you_lose")
+
+        em.title = "S L O T S"
+        em.description = "{slot1}{slot2}{slot3}{result}".format(
+            slot1=f"{_a}{_b}{_c}\n",
+            slot2=f"{a}{b}{c} \◀\n",
+            slot3=f"{a_}{b_}{c_}\n",
+            result=result.format(
+                author=tagged_dname(ctx.author),
+                amount=split_int(amount),
+                emoji=ctx.emoji
+            )
+        )
+
+        await bot.db.update({
+            "cash": cash
+        }, "users", where={"id": ctx.author.id, "guild": ctx.guild.id})
+
+        await bot.true_send(ctx=ctx, embed=em)
+        return
+
+
     @commands.command(pass_context=True, name="flipcoin", aliases=["flip-coin", "coin", "flip", "fc"], invoke_without_command=True)
     @commands.guild_only()
     @commands.cooldown(1, 1, commands.BucketType.user)

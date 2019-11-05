@@ -26,7 +26,7 @@ from config.settings import settings
 
 __name__ = "Tomori"
 __author__ = "Pineapple Cookie"
-__version__ = "5.3.4 Go"
+__version__ = "5.5.5 Go"
 
 SHARD_COUNT = 4
 
@@ -150,6 +150,29 @@ class Tomori(commands.AutoShardedBot):
     async def get_tenor_gif(self, name: str):
         gifs = await self.get_tenor_list(name)
         return random.choice(gifs)
+
+    async def get_weeb_gif(self, name: str):
+        gif = None
+        try:
+            params = {
+                "type": name,
+                "filetype": "gif",
+                "nsfw": 1
+            }
+            resp = await self.session.get(
+                "https://api.weeb.sh/images/random",
+                params = params,
+                headers = {
+                    "Authorization": settings["weeb_token"]
+                })
+            if resp.status == 200:
+                data = await resp.json()
+                gif = data.get("url", None)
+        except Exception as e:
+            logger.info(f"get_weeb_gif: Unknown exception ({e}) - Name: {name}")
+        if not gif:
+            gif = await self.get_tenor_gif("404")
+        return gif
 
 
     async def add_follow_links(self, ctx, embed):
@@ -423,6 +446,32 @@ class Tomori(commands.AutoShardedBot):
                 msg = await self.true_send_error(ctx=ctx)
             else:
                 raise e
+        return msg
+
+
+
+    async def send_or_edit(self, *args, **kwargs):
+        msg = None
+        try:
+            message = kwargs.pop("message", None)
+        except:
+            message = None
+
+        if not message:
+            msg = await self.true_send(*args, **kwargs)
+        else:
+            try:
+                await message.edit(
+                    content=kwargs.get("content", None),
+                    embed=kwargs.get("embed", None),
+                    suppress=kwargs.get("suppress", None),
+                    delete_after=kwargs.get("delete_after", None)
+                )
+                msg = message
+            except Exception as e:
+                msg = None
+                print(e)
+
         return msg
 
 

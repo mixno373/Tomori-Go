@@ -258,6 +258,45 @@ class Fun(commands.Cog):
         return
 
 
+    @commands.command(pass_context=True, name="owo", aliases=[
+        "lewd",
+        "neko",
+        "megumin",
+        "deredere",
+        "cry",
+        "shrug",
+        "trap",
+        "baka",
+        "sleepy",
+        "jojo",
+        "awoo",
+        "smile",
+        "smug",
+        "nani",
+        "poi",
+        "pout",
+        "wasted"
+    ])
+    @commands.guild_only()
+    @commands.cooldown(1, 1, commands.BucketType.user)
+    async def secret_activities_(self, ctx, user: discord.Member=None):
+        bot = self.bot
+        ctx.bot = bot
+
+        cmd = ctx.invoked_with.lower()
+
+        ctx = await context_init(ctx, "secret")
+        if not ctx: return
+        em = ctx.embed.copy()
+
+        gif_url = await bot.get_weeb_gif(cmd)
+        em.set_author(name=tagged_dname(ctx.author), icon_url=str(ctx.author.avatar_url))
+        em.set_image(url=gif_url)
+
+        await bot.true_send(ctx=ctx, embed=em)
+        return
+
+
 
     @commands.command(pass_context=True, name="top", aliases=[
         "voice",

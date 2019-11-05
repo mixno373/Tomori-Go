@@ -242,7 +242,7 @@ COMMANDS_LIST = {
                 "work|work",
                 "br|br",
                 "flipcoin|flip",
-                # "slots|-",
+                "slots|slots",
                 "give|give",
                 "shop|shop"
                ],
