@@ -26,7 +26,7 @@ from config.settings import settings
 
 __name__ = "Tomori"
 __author__ = "Pineapple Cookie"
-__version__ = "5.6.0 Go"
+__version__ = "5.7.0 Go"
 
 SHARD_COUNT = 4
 

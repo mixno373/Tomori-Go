@@ -87,23 +87,23 @@ class Other(commands.Cog):
         em = ctx.embed.copy()
 
         if ctx.lang == "russian":
-            em.description = f"""***Tomori - python-бот, созданный __Pineapple_Cookie (美波🌊 fan)#0373__
-                                при поддержке __Unknown [...]#0001__ и __Naneynonn#0101__.
-                                Отдельная благодарность __DyingNightmare2.0#0135__***
-
-                                **[Сервер поддержки]({self.support_guild_url})**
-                                **[Сайт]({self.website_url})**
-
-                                Все вопросы сюда <@499937748862500864>"""
+            em.description = f"***Tomori - python-бот, созданный __Pineapple_Cookie (美波🌊 fan)#0373__\n" \
+                                f"при поддержке __Unknown [...]#0001__ и __Naneynonn#0101__.\n" \
+                                f"Отдельная благодарность __DyingNightmare2.0#0135__***\n" \
+                                f"\n" \
+                                f"**[Сервер поддержки]({self.support_guild_url})**\n" \
+                                f"**[Сайт]({self.website_url})**\n" \
+                                f"\n" \
+                                f"Все вопросы сюда <@499937748862500864>"
         else:
-            em.description = f"""***Tomori is python-bot created by __Pineapple_Cookie (美波🌊 fan)#0373__
-                                supported by __Unknown [...]#0001__ and __Naneynonn#0101__.
-                                Special thanks to __DyingNightmare2.0#0135__***
-
-                                **[Support server]({self.support_guild_url})**
-                                **[Site]({self.website_url})**
-
-                                For any questions message to <@499937748862500864>"""
+            em.description = f"***Tomori is a python-bot created by __Pineapple_Cookie (美波🌊 fan)#0373__\n" \
+                                f"supported by __Unknown [...]#0001__ and __Naneynonn#0101__.\n" \
+                                f"Special thanks to __DyingNightmare2.0#0135__***\n" \
+                                f"\n" \
+                                f"**[Support server]({self.support_guild_url})**\n" \
+                                f"**[Site]({self.website_url})**\n" \
+                                f"\n" \
+                                f"For any questions message to <@499937748862500864>"
         em.set_footer(text=f"{bot.t_name} {bot.t_version} | Uptime: {format_seconds((datetime.utcnow() - bot.launch_time).total_seconds())}")
 
         await bot.true_send(ctx=ctx, embed=em)
@@ -889,6 +889,92 @@ class Other(commands.Cog):
         return
 
 
+    @set_.group(pass_context=True, name="welcome", aliases=["w"], invoke_without_command=True)
+    @commands.guild_only()
+    @commands.cooldown(1, 1, commands.BucketType.user)
+    async def set_welcome_(self, ctx):
+        bot = self.bot
+        ctx.bot = bot
+
+        ctx = await context_init(ctx)
+        if not ctx: return
+
+        await bot.true_send_error(ctx=ctx, error="incorrect_argument", arg="value")
+        return
+
+
+    @set_welcome_.command(pass_context=True, name="channel", invoke_without_command=True)
+    @commands.guild_only()
+    @commands.cooldown(1, 1, commands.BucketType.user)
+    async def set_welcome_channel_(self, ctx, channel: discord.TextChannel):
+        bot = self.bot
+        ctx.bot = bot
+
+        ctx = await context_init(ctx)
+        if not ctx: return
+        em = ctx.embed.copy()
+
+        await bot.db.update({
+            "welcome_channel": channel.id
+        }, "guilds", where={"id": ctx.guild.id})
+        em.description = bot.get_locale(ctx.lang, "other_welcome_set_success").format(
+            author=tagged_dname(ctx.author),
+            type="channel",
+            value=channel.mention
+        )
+
+        await bot.true_send(ctx=ctx, embed=em)
+        return
+
+
+    @set_welcome_.command(pass_context=True, name="text", invoke_without_command=True)
+    @commands.guild_only()
+    @commands.cooldown(1, 1, commands.BucketType.user)
+    async def set_welcome_text_(self, ctx, value: str):
+        bot = self.bot
+        ctx.bot = bot
+
+        ctx = await context_init(ctx)
+        if not ctx: return
+        em = ctx.embed.copy()
+
+        await bot.db.update({
+            "welcome_text": value
+        }, "guilds", where={"id": ctx.guild.id})
+        em.description = bot.get_locale(ctx.lang, "other_welcome_set_success").format(
+            author=tagged_dname(ctx.author),
+            type="text",
+            value=value
+        )
+
+        await bot.true_send(ctx=ctx, embed=em)
+        return
+
+
+    @set_welcome_.command(pass_context=True, name="leavetext", aliases=["leave", "leave_text"], invoke_without_command=True)
+    @commands.guild_only()
+    @commands.cooldown(1, 1, commands.BucketType.user)
+    async def set_welcome_leavetext_(self, ctx, value: str):
+        bot = self.bot
+        ctx.bot = bot
+
+        ctx = await context_init(ctx)
+        if not ctx: return
+        em = ctx.embed.copy()
+
+        await bot.db.update({
+            "welcome_leave_text": value
+        }, "guilds", where={"id": ctx.guild.id})
+        em.description = bot.get_locale(ctx.lang, "other_welcome_set_success").format(
+            author=tagged_dname(ctx.author),
+            type="leave text",
+            value=value
+        )
+
+        await bot.true_send(ctx=ctx, embed=em)
+        return
+
+
     @set_.group(pass_context=True, name="guild", invoke_without_command=True)
     @commands.guild_only()
     @commands.cooldown(1, 1, commands.BucketType.user)
@@ -993,6 +1079,8 @@ class Other(commands.Cog):
         ctx = await context_init(ctx)
         if not ctx or not is_admin(ctx.author): return
         em = ctx.embed.copy()
+
+        url = url[:2000]
 
         await bot.db.update({"nitro_avatar": url}, "guilds", where={"id": ctx.guild.id})
         em.description = bot.get_locale(ctx.lang, "other_bot_avatar_success").format(author=tagged_dname(ctx.author))
