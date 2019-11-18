@@ -28,6 +28,12 @@ def get_lvl(xp: int):
             i += 1
     return lvl
 
+def starred_name(user):
+    return "**{}**".format(user.name.replace('*', '\\*'))
+
+def starred_dname(user):
+    return "**{}**".format(user.display_name.replace('*', '\\*'))
+
 def tagged_name(user):
     return "{0.name}#{0.discriminator}".format(user)
 

@@ -26,7 +26,7 @@ from config.settings import settings
 
 class Other(commands.Cog):
 
-    support_guild_url = "https://discord.gg/tomori"
+    support_guild_url = "https://discord.gg/ucCuVgp"
     website_url = "http://discord.band"
     webpage_commands_url = "https://discord.band/commands"
     invite_url = "https://discordapp.com/api/oauth2/authorize?client_id={id}&permissions=1073212631&redirect_uri=https%3A%2F%2Fdiscord.band&scope=bot"
@@ -1027,6 +1027,12 @@ class Other(commands.Cog):
         em.description = bot.get_locale(ctx.lang, "other_guild_stats_success").format(
             author=tagged_dname(ctx.author)
         )
+
+        try:
+            events = bot.get_cog('Events')
+            await events.guild_stats_update(ctx.guild)
+        except Exception as e:
+            print(e)
 
         await bot.true_send(ctx=ctx, embed=em)
         return

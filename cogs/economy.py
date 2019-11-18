@@ -317,10 +317,9 @@ class Economy(commands.Cog):
             await bot.true_send_error(ctx=ctx, error="economy_cant_put_bet_of_zero", author=tagged_dname(ctx.author))
             return
 
-        chance = random.randint(0, 10)
-        if ctx.badges.boost:
-            chance += 1
-        if chance > 5:
+        side = flipcoin_sides.get(side.lower(), "heads")
+        win_side = random.choice(list(flipcoin_images.keys()))
+        if side == win_side:
             if not await bot.check_any_badges(ctx.author, ["nitro", "staff", "partner"]):
                 amount = int(amount / 2)
             if amount == 0: amount = 1
@@ -345,7 +344,7 @@ class Economy(commands.Cog):
         # tenor_name = "coin flip"
         # if ctx.const["anime_gif"]: tenor_name = f"{tenor_name} anime"
         # gif_url = await bot.get_tenor_gif(tenor_name)
-        gif_url = "https://media1.tenor.com/images/15f6594fba46474d6a2b8ac81786b427/tenor.gif?itemid=6238123"
+        gif_url = flipcoin_images.get(win_side)
         em.set_image(url=gif_url)
 
         await bot.true_send(ctx=ctx, embed=em)

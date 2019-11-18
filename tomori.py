@@ -26,9 +26,9 @@ from config.settings import settings
 
 __name__ = "Tomori"
 __author__ = "Pineapple Cookie"
-__version__ = "5.7.0 Go"
+__version__ = "5.8.1 Go"
 
-SHARD_COUNT = 4
+SHARD_COUNT = 2
 
 
 class Tomori(commands.AutoShardedBot):
@@ -185,121 +185,73 @@ class Tomori(commands.AutoShardedBot):
 
 
     async def statuses(self):
-        while not self.is_closed():
+        while True:
+            while not self.is_closed():
 
-            guilds_count = len(self.guilds)
-            users_count = 0
-            try:
-                for guild in self.guilds:
-                    users_count += guild.member_count
-            except:
-                pass
+                guilds_count = len(self.guilds)
+                users_count = 0
+                try:
+                    for guild in self.guilds:
+                        users_count += guild.member_count
+                except:
+                    pass
 
-            def _beauty(count):
-                if int(count/1000000) > 0:
-                    count = str(int(count/1000000))+"M"
-                elif int(count/1000) > 0:
-                    count = str(int(count/1000))+"K"
-                return count
+                def _beauty(count):
+                    if int(count/1000000) > 0:
+                        count = str(int(count/1000000))+"M"
+                    elif int(count/1000) > 0:
+                        count = str(int(count/1000))+"K"
+                    return count
 
-            users_count = _beauty(users_count)
-            guilds_count = guilds_count
-            await self.change_presence(activity=discord.Streaming(name=f"Servers: {guilds_count} | Users: {users_count} | Shards: {self.shard_count}", url="https://www.twitch.tv/tomori_bot"))
+                users_count = _beauty(users_count)
+                guilds_count = guilds_count
+                await self.change_presence(activity=discord.Streaming(name=f"Servers: {guilds_count} | Users: {users_count} | Shards: {self.shard_count}", url="https://www.twitch.tv/tomori_bot"))
 
-            await asyncio.sleep(600)
-
-
-    async def guild_stats_handling(self):
-        while not self.is_closed():
-            data = True
-            offset = 0
-            while data:
-                data = await self.db.fetch(f"SELECT * FROM mods WHERE type='guild_stats' ORDER BY id ASC LIMIT 25 OFFSET {offset}")
-                if not data: break
-                offset += 25
-
-                deleted_rows = []
-                for row in data:
-                    guild = self.get_guild(row["guild_id"])
-                    channel = self.get_channel(int(row["name"]))
-
-                    if not guild or not channel:
-                        deleted_rows.append(str(row["id"]))
-                        continue
-
-                    m_all = guild.member_count
-                    m_online = [1 if m.status == discord.Status.online and not m.bot else 0 for m in guild.members].count(1)
-                    m_offline = [1 if m.status == discord.Status.offline and not m.bot else 0 for m in guild.members].count(1)
-                    m_idle = [1 if m.status == discord.Status.idle and not m.bot else 0 for m in guild.members].count(1)
-                    m_dnd = [1 if m.status == discord.Status.dnd and not m.bot else 0 for m in guild.members].count(1)
-                    m_bots = [1 if m.bot else 0 for m in guild.members].count(1)
-                    m_voices = 0
-                    for voice in guild.voice_channels:
-                        m_voices += len(voice.members)
-
-                    text = row["value"].format(
-                        all=m_all,
-                        online=m_online,
-                        offline=m_offline,
-                        idle=m_idle,
-                        dnd=m_dnd,
-                        bots=m_bots,
-                        voice=m_voices
-                    )
-                    text = text[:100]
-
-                    try:
-                        await channel.edit(name=text, reason="Tomori Guild Stats")
-                    except discord.Forbidden:
-                        pass
-                    except Exception as e:
-                        logger.info(f"guild_stats_handling: Unknown exception ({e}) - {guild.name} [{guild.id}] | Channel: {channel.name} [{channel.id}]")
-
-                    await asyncio.sleep(1)
-
-                if deleted_rows: await self.db.execute(f"DELETE FROM mods WHERE id in ({','.join(deleted_rows)})")
-
-            await asyncio.sleep(1)
+                await asyncio.sleep(600)
+            await asyncio.sleep(60)
 
 
     async def reset_badges(self):
-        while not self.is_closed():
-            data = await self.db.fetch(f"SELECT * FROM mods WHERE type='reset_badges' AND condition::bigint < {unix_time()} AND condition::bigint > 10")
-            for row in data:
-                remove_badges = Badges(row["arguments"])
-                user_id = int(row["name"])
-                badges = await self.get_badges(user_id)
-                badges = badges.get_badges()
-                new_badges = []
-                for badge in badges:
-                    if not badge in remove_badges.get_badges():
-                        new_badges.append(badge)
-                tasks = []
-                if new_badges:
-                    tasks.append(self.db.update({"arguments": new_badges}, "mods", where={"id": row["id"]}))
-                else:
-                    tasks.append(self.db.execute(f"DELETE FROM mods WHERE type = 'badges' and name = '{user_id}'"))
-                tasks.append(self.db.execute(f"DELETE FROM mods WHERE id = {row['id']}"))
-                await asyncio.wait(tasks)
-            await self.cache["badges"].clear()
+        while True:
+            while not self.is_closed():
+                data = await self.db.fetch(f"SELECT * FROM mods WHERE type='reset_badges' AND condition::bigint < {unix_time()} AND condition::bigint > 10")
+                for row in data:
+                    remove_badges = Badges(row["arguments"])
+                    user_id = int(row["name"])
+                    badges = await self.get_badges(user_id)
+                    badges = badges.get_badges()
+                    new_badges = []
+                    for badge in badges:
+                        if not badge in remove_badges.get_badges():
+                            new_badges.append(badge)
+                    tasks = []
+                    if new_badges:
+                        tasks.append(self.db.update({"arguments": new_badges}, "mods", where={"id": row["id"]}))
+                    else:
+                        tasks.append(self.db.execute(f"DELETE FROM mods WHERE type = 'badges' and name = '{user_id}'"))
+                    tasks.append(self.db.execute(f"DELETE FROM mods WHERE id = {row['id']}"))
+                    await asyncio.wait(tasks)
+                await self.cache["badges"].clear()
 
-            data = await self.db.fetch(f"SELECT * FROM mods WHERE type='reset_guild_badges' AND condition::bigint < {unix_time()} AND condition::bigint > 10")
-            for row in data:
-                guild_id = row["guild_id"]
-                rm_args = {}
-                for arg in row["arguments"]:
-                    rm_args[f"is_{arg.lower()}"] = False
-                tasks = []
-                if rm_args:
-                    tasks.append(self.db.update(rm_args, "guilds", where={"id": guild_id}))
-                tasks.append(self.db.execute(f"DELETE FROM mods WHERE id = {row['id']}"))
-                await asyncio.wait(tasks)
+                data = await self.db.fetch(f"SELECT * FROM mods WHERE type='reset_guild_badges' AND condition::bigint < {unix_time()} AND condition::bigint > 10")
+                for row in data:
+                    guild_id = row["guild_id"]
+                    rm_args = {}
+                    for arg in row["arguments"]:
+                        rm_args[f"is_{arg.lower()}"] = False
+                    tasks = []
+                    if rm_args:
+                        tasks.append(self.db.update(rm_args, "guilds", where={"id": guild_id}))
+                    tasks.append(self.db.execute(f"DELETE FROM mods WHERE id = {row['id']}"))
+                    await asyncio.wait(tasks)
 
-            await asyncio.sleep(COOLDOWNS["hour"])
+                await asyncio.sleep(COOLDOWNS["hour"])
+            await asyncio.sleep(60)
 
 
     async def on_resumed(self):
         self.launch_time = datetime.utcnow()
+        self.commands_activity = {}
         channel = self.get_channel(641280233260974125)
         if channel: await channel.send(f"ぱいなぴるー君、見ってください。 (v{__version__})")
 
@@ -316,7 +268,7 @@ class Tomori(commands.AutoShardedBot):
 
         self.loop.create_task(self.statuses())
         self.loop.create_task(self.reset_badges())
-        self.loop.create_task(self.guild_stats_handling())
+        # self.loop.create_task(self.guild_stats_handling())
         # self.loop.create_task(mutting())
         # self.loop.create_task(spaming())
 

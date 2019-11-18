@@ -107,6 +107,18 @@ COLORS = {
     'kick': 0xF10118
 }
 
+flipcoin_sides = {
+    "h": "heads",
+    "head": "heads",
+    "t": "tails",
+    "tail": "tails"
+}
+
+flipcoin_images = {
+    "heads": "https://discord.band/img/economy/coin_heads.png",
+    "tails": "https://discord.band/img/economy/coin_tails.png"
+}
+
 ERRORS = {
     "default": discord.Embed(
                         title="Unknown Exception",

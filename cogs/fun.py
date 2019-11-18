@@ -105,7 +105,7 @@ class Fun(commands.Cog):
                 avatar = Image.open(BytesIO(await ava_url.read()))
                 avatar = avatar.convert("RGBA")
             except Exception as e:
-                logger.info(e)
+                logger.info(f"profile: Unknown exception ({e}) - {ctx.guild.name} [{ctx.guild.id}] User:{ctx.author.name} [{ctx.author.id}]")
                 await bot.true_send_error(ctx=ctx, error="global_url_not_image")
                 return
 
@@ -248,13 +248,14 @@ class Fun(commands.Cog):
         tenor_name = act["tenor"]
         if ctx.const["anime_gif"]: tenor_name = f"{tenor_name} anime"
         gif_url = await bot.get_tenor_gif(tenor_name)
-        em.description = bot.get_locale(ctx.lang, f"fun_{act['cmd']}").format(
-            author=ctx.author.mention,
-            user=user.mention
+        content = "💬 "+bot.get_locale(ctx.lang, f"fun_{act['cmd']}").format(
+            author=starred_dname(ctx.author),
+            user=starred_dname(user)
         )
+        em.color = 0x36393F
         em.set_image(url=gif_url)
 
-        await bot.true_send(ctx=ctx, embed=em)
+        await bot.true_send(ctx=ctx, content=content, embed=em)
         return
 
 
@@ -292,6 +293,7 @@ class Fun(commands.Cog):
         gif_url = await bot.get_weeb_gif(cmd)
         em.set_author(name=tagged_dname(ctx.author), icon_url=str(ctx.author.avatar_url))
         em.set_image(url=gif_url)
+        em.color = 0x36393F
 
         await bot.true_send(ctx=ctx, embed=em)
         return

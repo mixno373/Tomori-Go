@@ -29,6 +29,82 @@ class Events(commands.Cog):
         self.bot = bot
 
 
+    async def guild_stats_update(self, guild, event: str="all"):
+        assert isinstance(guild, discord.Guild), "guild_stats_update: Improrer value for `guild` variable"
+
+        bot = self.bot
+
+        data = await bot.db.select_all("*", "mods", where={
+            "type": "guild_stats",
+            "guild_id": guild.id
+        })
+        if not data:
+            return
+
+        m_all = guild.member_count
+        m_online = [1 if str(m.status).lower() == "online" and not m.bot else 0 for m in guild.members].count(1)
+        m_offline = [1 if str(m.status).lower() == "offline" and not m.bot else 0 for m in guild.members].count(1)
+        m_idle = [1 if str(m.status).lower() == "idle" and not m.bot else 0 for m in guild.members].count(1)
+        m_dnd = [1 if str(m.status).lower() == "dnd" and not m.bot else 0 for m in guild.members].count(1)
+        m_active = m_online + m_dnd + m_idle
+        m_bots = [1 if m.bot else 0 for m in guild.members].count(1)
+        m_voices = 0
+        for voice in guild.voice_channels:
+            m_voices += len(voice.members)
+
+        for row in data:
+            channel = bot.get_channel(int(row["name"]))
+
+            if not channel:
+                # deleted_rows.append(str(row["id"]))
+                continue
+
+            text = row["value"]
+            rtext = str(text)
+
+            event = event.lower()
+            if event == "status" and not any(kind in rtext for kind in ["{active}", "{online}", "{offline}", "{idle}", "{dnd}"]):
+                continue
+            if event == "members" and not any(kind in rtext for kind in ["{all}", "{active}", "{online}", "{offline}", "{idle}", "{dnd}", "{bots}"]):
+                continue
+            if event == "voice" and not "{voice}" in rtext:
+                continue
+
+            try:
+                text = text.format(
+                    all=m_all,
+                    online=m_online,
+                    active=m_active,
+                    offline=m_offline,
+                    idle=m_idle,
+                    dnd=m_dnd,
+                    bots=m_bots,
+                    voice=m_voices
+                )
+            except Exception as e:
+                pass
+            text = text[:100]
+
+            if channel.name == text:
+                continue
+
+            try:
+                await channel.edit(name=text, reason="Tomori Guild Stats")
+            except discord.Forbidden:
+                pass
+            except Exception as e:
+                logger.info(f"guild_stats_handling: Unknown exception ({e}) - {guild.name} [{guild.id}] | Channel: {channel.name} [{channel.id}]")
+
+
+    @commands.Cog.listener()
+    async def on_member_update(self, before, after):
+        bot = self.bot
+
+        # Status changes
+        if before.status != after.status:
+            await self.guild_stats_update(before.guild, "status")
+
+
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
         await self.bot.get_cached_guild(guild)
@@ -80,6 +156,8 @@ class Events(commands.Cog):
         guild = member.guild
         data = await bot.get_cached_guild(guild)
 
+        await self.guild_stats_update(guild, "members")
+
 
         roles = []
         reason = None
@@ -116,111 +194,114 @@ class Events(commands.Cog):
                 logger.info(f"on_member_join->add_roles: Unknown exception ({e}) - {guild.name} [{guild.id}]")
 
         # Welcomer
-        if data["welcome_channel"]:
-            channel = bot.get_channel(data["welcome_channel"])
-            if channel:
+        try:
+            if data["welcome_channel"]:
+                channel = bot.get_channel(data["welcome_channel"])
+                if channel:
 
-                content = None
-                if data["welcome_text"]:
-                    content = welcomer_format(member, data)
+                    content = None
+                    if data["welcome_text"]:
+                        content = welcomer_format(member, data)
 
-                async with channel.typing():
-                    try:
-                        color = json.loads(data["welcome_text_color"])
-                        color = (color[0], color[1], color[2])
-                    except:
-                        color = (0, 0, 0)
+                    async with channel.typing():
+                        try:
+                            color = json.loads(data["welcome_text_color"])
+                            color = (color[0], color[1], color[2])
+                        except:
+                            color = (0, 0, 0)
 
-                    back = Image.open("cogs/stat/backgrounds/welcome/{}.png".format(data["welcome_back"]))
-                    draw = ImageDraw.Draw(back)
-                    under = Image.open("cogs/stat/backgrounds/welcome/under_{}.png".format(data["welcome_under"]))
+                        back = Image.open("cogs/stat/backgrounds/welcome/{}.png".format(data["welcome_back"]))
+                        draw = ImageDraw.Draw(back)
+                        under = Image.open("cogs/stat/backgrounds/welcome/under_{}.png".format(data["welcome_under"]))
 
-                    text_welcome = ImageFont.truetype("cogs/stat/ProximaNova-Bold.otf", 50)
-                    text_name = ImageFont.truetype("cogs/stat/ProximaNova-Bold.otf", 50)
+                        text_welcome = ImageFont.truetype("cogs/stat/ProximaNova-Bold.otf", 50)
+                        text_name = ImageFont.truetype("cogs/stat/ProximaNova-Bold.otf", 50)
 
-                    text_welcome = u"{}".format("WELCOME")
-                    welcome_size = 1
-                    font_name = ImageFont.truetype("cogs/stat/ProximaNova-Bold.otf", welcome_size)
-                    while font_name.getsize(text_welcome)[0] < 500:
-                        welcome_size += 1
+                        text_welcome = u"{}".format("WELCOME")
+                        welcome_size = 1
+                        font_name = ImageFont.truetype("cogs/stat/ProximaNova-Bold.otf", welcome_size)
+                        while font_name.getsize(text_welcome)[0] < 500:
+                            welcome_size += 1
+                            font_welcome = ImageFont.truetype("cogs/stat/ProximaNova-Bold.otf", welcome_size)
+                            if welcome_size == 71:
+                                break
+                        welcome_size -= 1
                         font_welcome = ImageFont.truetype("cogs/stat/ProximaNova-Bold.otf", welcome_size)
-                        if welcome_size == 71:
-                            break
-                    welcome_size -= 1
-                    font_welcome = ImageFont.truetype("cogs/stat/ProximaNova-Bold.otf", welcome_size)
 
-                    text_name = u"{}".format(tagged_name(member))
-                    name_size = 1
-                    font_name = ImageFont.truetype("cogs/stat/ProximaNova-Regular.ttf", name_size)
-                    while font_name.getsize(text_name)[0] < 500:
-                        name_size += 1
+                        text_name = u"{}".format(tagged_name(member))
+                        name_size = 1
                         font_name = ImageFont.truetype("cogs/stat/ProximaNova-Regular.ttf", name_size)
-                        if name_size == 36:
-                            break
-                    name_size -= 1
-                    font_name = ImageFont.truetype("cogs/stat/ProximaNova-Regular.ttf", name_size)
+                        while font_name.getsize(text_name)[0] < 500:
+                            name_size += 1
+                            font_name = ImageFont.truetype("cogs/stat/ProximaNova-Regular.ttf", name_size)
+                            if name_size == 36:
+                                break
+                        name_size -= 1
+                        font_name = ImageFont.truetype("cogs/stat/ProximaNova-Regular.ttf", name_size)
 
-                    ava_url = str(member.avatar_url)
-                    response = requests.get(ava_url)
-                    avatar = Image.open(BytesIO(response.content))
-                    avatar = avatar.resize((343, 343)).convert("RGB")
-                    avatar.putalpha(mask_welcome)
-                    back.paste(under, (0, 0), under)
-                    back.paste(avatar, (29, 29), avatar)
+                        ava_url = str(member.avatar_url)
+                        response = requests.get(ava_url)
+                        avatar = Image.open(BytesIO(response.content))
+                        avatar = avatar.resize((343, 343)).convert("RGB")
+                        avatar.putalpha(mask_welcome)
+                        back.paste(under, (0, 0), under)
+                        back.paste(avatar, (29, 29), avatar)
 
 
-                    kernel = [
-                        0, 1, 2, 1, 0,
-                        1, 2, 4, 2, 1,
-                        2, 4, 8, 4, 1,
-                        1, 2, 4, 2, 1,
-                        0, 1, 2, 1, 0
-                    ]
-                    kernelsum = sum(kernel)
-                    myfilter = ImageFilter.Kernel((5, 5), kernel, scale = 0.3 * kernelsum)
-                    halo = Image.new('RGBA', back.size, (0, 0, 0, 0))
-                    if data["welcome_is_text"]:
-                        ImageDraw.Draw(halo).text(
-                            (435, 120),
-                            text_welcome,
-                            (0, 0, 0),
-                            font=font_welcome
-                        )
-                        ImageDraw.Draw(halo).text(
-                            (435, 230),
-                            text_name,
-                            (0, 0, 0),
-                            font=font_name
-                        )
-                    blurred_halo = halo.filter(myfilter)
-                    if data["welcome_is_text"]:
-                        ImageDraw.Draw(blurred_halo).text(
-                            (435, 120),
-                            text_welcome,
-                            color,
-                            font=font_welcome
-                        )
-                        ImageDraw.Draw(blurred_halo).text(
-                            (435, 230),
-                            text_name,
-                            color,
-                            font=font_name
-                        )
-                    back = Image.composite(back, blurred_halo, ImageChops.invert(blurred_halo))
-                    draw = ImageDraw.Draw(back)
+                        kernel = [
+                            0, 1, 2, 1, 0,
+                            1, 2, 4, 2, 1,
+                            2, 4, 8, 4, 1,
+                            1, 2, 4, 2, 1,
+                            0, 1, 2, 1, 0
+                        ]
+                        kernelsum = sum(kernel)
+                        myfilter = ImageFilter.Kernel((5, 5), kernel, scale = 0.3 * kernelsum)
+                        halo = Image.new('RGBA', back.size, (0, 0, 0, 0))
+                        if data["welcome_is_text"]:
+                            ImageDraw.Draw(halo).text(
+                                (435, 120),
+                                text_welcome,
+                                (0, 0, 0),
+                                font=font_welcome
+                            )
+                            ImageDraw.Draw(halo).text(
+                                (435, 230),
+                                text_name,
+                                (0, 0, 0),
+                                font=font_name
+                            )
+                        blurred_halo = halo.filter(myfilter)
+                        if data["welcome_is_text"]:
+                            ImageDraw.Draw(blurred_halo).text(
+                                (435, 120),
+                                text_welcome,
+                                color,
+                                font=font_welcome
+                            )
+                            ImageDraw.Draw(blurred_halo).text(
+                                (435, 230),
+                                text_name,
+                                color,
+                                font=font_name
+                            )
+                        back = Image.composite(back, blurred_halo, ImageChops.invert(blurred_halo))
+                        draw = ImageDraw.Draw(back)
 
-                    fp = BytesIO()
-                    back.save(fp, "PNG")
-                    fp.seek(0)
-                    await bot.true_send(
-                        channel=channel,
-                        content=content,
-                        file=discord.File(fp, f"welcome_{member.id}.png"),
-                        nitro=data["is_nitro"],
-                        username=data["nitro_name"] if data["nitro_name"] else None,
-                        avatar_url=data["nitro_avatar"] if data["nitro_avatar"] else None
-                    )
-                    return
+                        fp = BytesIO()
+                        back.save(fp, "PNG")
+                        fp.seek(0)
+                        await bot.true_send(
+                            channel=channel,
+                            content=content,
+                            file=discord.File(fp, f"welcome_{member.id}.png"),
+                            nitro=data["is_nitro"],
+                            username=data["nitro_name"] if data["nitro_name"] else None,
+                            avatar_url=data["nitro_avatar"] if data["nitro_avatar"] else None
+                        )
+                        return
+        except Exception as e:
+            pass
 
 
     @commands.Cog.listener()
@@ -228,6 +309,8 @@ class Events(commands.Cog):
         bot = self.bot
         guild = member.guild
         data = await bot.get_cached_guild(guild)
+
+        await self.guild_stats_update(guild, "members")
 
         # Сохранение ролей
         if data["is_save_roles_on_leave"]:
@@ -243,110 +326,113 @@ class Events(commands.Cog):
             }, "mods", constraint="uniq_type")
 
         # Welcomer
-        if data["welcome_channel"]:
-            channel = bot.get_channel(data["welcome_channel"])
-            if channel:
+        try:
+            if data["welcome_channel"]:
+                channel = bot.get_channel(data["welcome_channel"])
+                if channel:
 
-                content = None
-                if data["welcome_leave_text"]:
-                    content = welcomer_format(member, data, text=data["welcome_leave_text"])
+                    content = None
+                    if data["welcome_leave_text"]:
+                        content = welcomer_format(member, data, text=data["welcome_leave_text"])
 
-                async with channel.typing():
-                    try:
-                        color = json.loads(data["welcome_text_color"])
-                        color = (color[0], color[1], color[2])
-                    except:
-                        color = (0, 0, 0)
+                    async with channel.typing():
+                        try:
+                            color = json.loads(data["welcome_text_color"])
+                            color = (color[0], color[1], color[2])
+                        except:
+                            color = (0, 0, 0)
 
-                    back = Image.open("cogs/stat/backgrounds/welcome/{}.png".format(data["welcome_back"]))
-                    draw = ImageDraw.Draw(back)
-                    under = Image.open("cogs/stat/backgrounds/welcome/under_{}.png".format(data["welcome_under"]))
+                        back = Image.open("cogs/stat/backgrounds/welcome/{}.png".format(data["welcome_back"]))
+                        draw = ImageDraw.Draw(back)
+                        under = Image.open("cogs/stat/backgrounds/welcome/under_{}.png".format(data["welcome_under"]))
 
-                    text_welcome = ImageFont.truetype("cogs/stat/ProximaNova-Bold.otf", 50)
-                    text_name = ImageFont.truetype("cogs/stat/ProximaNova-Bold.otf", 50)
+                        text_welcome = ImageFont.truetype("cogs/stat/ProximaNova-Bold.otf", 50)
+                        text_name = ImageFont.truetype("cogs/stat/ProximaNova-Bold.otf", 50)
 
-                    text_welcome = u"{}".format("GOODBYE")
-                    welcome_size = 1
-                    font_name = ImageFont.truetype("cogs/stat/ProximaNova-Bold.otf", welcome_size)
-                    while font_name.getsize(text_welcome)[0] < 500:
-                        welcome_size += 1
+                        text_welcome = u"{}".format("GOODBYE")
+                        welcome_size = 1
+                        font_name = ImageFont.truetype("cogs/stat/ProximaNova-Bold.otf", welcome_size)
+                        while font_name.getsize(text_welcome)[0] < 500:
+                            welcome_size += 1
+                            font_welcome = ImageFont.truetype("cogs/stat/ProximaNova-Bold.otf", welcome_size)
+                            if welcome_size == 71:
+                                break
+                        welcome_size -= 1
                         font_welcome = ImageFont.truetype("cogs/stat/ProximaNova-Bold.otf", welcome_size)
-                        if welcome_size == 71:
-                            break
-                    welcome_size -= 1
-                    font_welcome = ImageFont.truetype("cogs/stat/ProximaNova-Bold.otf", welcome_size)
 
-                    text_name = u"{}".format(tagged_name(member))
-                    name_size = 1
-                    font_name = ImageFont.truetype("cogs/stat/ProximaNova-Regular.ttf", name_size)
-                    while font_name.getsize(text_name)[0] < 500:
-                        name_size += 1
+                        text_name = u"{}".format(tagged_name(member))
+                        name_size = 1
                         font_name = ImageFont.truetype("cogs/stat/ProximaNova-Regular.ttf", name_size)
-                        if name_size == 36:
-                            break
-                    name_size -= 1
-                    font_name = ImageFont.truetype("cogs/stat/ProximaNova-Regular.ttf", name_size)
+                        while font_name.getsize(text_name)[0] < 500:
+                            name_size += 1
+                            font_name = ImageFont.truetype("cogs/stat/ProximaNova-Regular.ttf", name_size)
+                            if name_size == 36:
+                                break
+                        name_size -= 1
+                        font_name = ImageFont.truetype("cogs/stat/ProximaNova-Regular.ttf", name_size)
 
-                    ava_url = str(member.avatar_url)
-                    response = requests.get(ava_url)
-                    avatar = Image.open(BytesIO(response.content))
-                    avatar = avatar.resize((343, 343)).convert("RGB")
-                    avatar.putalpha(mask_welcome)
-                    back.paste(under, (0, 0), under)
-                    back.paste(avatar, (29, 29), avatar)
+                        ava_url = str(member.avatar_url)
+                        response = requests.get(ava_url)
+                        avatar = Image.open(BytesIO(response.content))
+                        avatar = avatar.resize((343, 343)).convert("RGB")
+                        avatar.putalpha(mask_welcome)
+                        back.paste(under, (0, 0), under)
+                        back.paste(avatar, (29, 29), avatar)
 
 
-                    kernel = [
-                        0, 1, 2, 1, 0,
-                        1, 2, 4, 2, 1,
-                        2, 4, 8, 4, 1,
-                        1, 2, 4, 2, 1,
-                        0, 1, 2, 1, 0
-                    ]
-                    kernelsum = sum(kernel)
-                    myfilter = ImageFilter.Kernel((5, 5), kernel, scale = 0.3 * kernelsum)
-                    halo = Image.new('RGBA', back.size, (0, 0, 0, 0))
-                    if data["welcome_is_text"]:
-                        ImageDraw.Draw(halo).text(
-                            (435, 120),
-                            text_welcome,
-                            (0, 0, 0),
-                            font=font_welcome
-                        )
-                        ImageDraw.Draw(halo).text(
-                            (435, 230),
-                            text_name,
-                            (0, 0, 0),
-                            font=font_name
-                        )
-                    blurred_halo = halo.filter(myfilter)
-                    if data["welcome_is_text"]:
-                        ImageDraw.Draw(blurred_halo).text(
-                            (435, 120),
-                            text_welcome,
-                            color,
-                            font=font_welcome
-                        )
-                        ImageDraw.Draw(blurred_halo).text(
-                            (435, 230),
-                            text_name,
-                            color,
-                            font=font_name
-                        )
-                    back = Image.composite(back, blurred_halo, ImageChops.invert(blurred_halo))
-                    draw = ImageDraw.Draw(back)
+                        kernel = [
+                            0, 1, 2, 1, 0,
+                            1, 2, 4, 2, 1,
+                            2, 4, 8, 4, 1,
+                            1, 2, 4, 2, 1,
+                            0, 1, 2, 1, 0
+                        ]
+                        kernelsum = sum(kernel)
+                        myfilter = ImageFilter.Kernel((5, 5), kernel, scale = 0.3 * kernelsum)
+                        halo = Image.new('RGBA', back.size, (0, 0, 0, 0))
+                        if data["welcome_is_text"]:
+                            ImageDraw.Draw(halo).text(
+                                (435, 120),
+                                text_welcome,
+                                (0, 0, 0),
+                                font=font_welcome
+                            )
+                            ImageDraw.Draw(halo).text(
+                                (435, 230),
+                                text_name,
+                                (0, 0, 0),
+                                font=font_name
+                            )
+                        blurred_halo = halo.filter(myfilter)
+                        if data["welcome_is_text"]:
+                            ImageDraw.Draw(blurred_halo).text(
+                                (435, 120),
+                                text_welcome,
+                                color,
+                                font=font_welcome
+                            )
+                            ImageDraw.Draw(blurred_halo).text(
+                                (435, 230),
+                                text_name,
+                                color,
+                                font=font_name
+                            )
+                        back = Image.composite(back, blurred_halo, ImageChops.invert(blurred_halo))
+                        draw = ImageDraw.Draw(back)
 
-                    fp = BytesIO()
-                    back.save(fp, "PNG")
-                    fp.seek(0)
-                    await bot.true_send(
-                        channel=channel,
-                        content=content,
-                        file=discord.File(fp, f"welcome_{member.id}.png"),
-                        nitro=data["is_nitro"],
-                        username=data["nitro_name"] if data["nitro_name"] else None,
-                        avatar_url=data["nitro_avatar"] if data["nitro_avatar"] else None
-                    )
+                        fp = BytesIO()
+                        back.save(fp, "PNG")
+                        fp.seek(0)
+                        await bot.true_send(
+                            channel=channel,
+                            content=content,
+                            file=discord.File(fp, f"welcome_{member.id}.png"),
+                            nitro=data["is_nitro"],
+                            username=data["nitro_name"] if data["nitro_name"] else None,
+                            avatar_url=data["nitro_avatar"] if data["nitro_avatar"] else None
+                        )
+        except Exception as e:
+            pass
 
 
     async def check_empty_voice(self, member, channel, data):
@@ -371,6 +457,7 @@ class Events(commands.Cog):
                 await self.check_empty_voice(member, before.channel, data)
             return
 
+        await self.guild_stats_update(member.guild, "voice")
 
         if before.channel:
             await self.check_empty_voice(member, before.channel, data)
@@ -452,6 +539,8 @@ class Events(commands.Cog):
     async def on_raw_reaction_add(self, payload):
         bot = self.bot
         emoji = str(payload.emoji).replace("<a:", "<:")
+        emoji_name = re.sub(r'[\d:<>]', '', emoji)
+        emoji_id = re.sub(r'\D', '', emoji)
         message_id = payload.message_id
         user_id = payload.user_id
         guild_id = payload.guild_id
@@ -473,7 +562,12 @@ class Events(commands.Cog):
         is_random = False
         for row in data:
             if not row["name"] == emoji or not row["arguments"]:
-                continue
+                if emoji_name and row["name"] == emoji_name:
+                    pass
+                elif emoji_id and row["name"] == emoji_id:
+                    pass
+                else:
+                    continue
             is_random = True if row["condition"] == "random" else False
             for role_id in row["arguments"]:
                 try:
@@ -501,6 +595,8 @@ class Events(commands.Cog):
     async def on_raw_reaction_remove(self, payload):
         bot = self.bot
         emoji = str(payload.emoji).replace("<a:", "<:")
+        emoji_name = re.sub(r'[\d:<>]', '', emoji)
+        emoji_id = re.sub(r'\D', '', emoji)
         message_id = payload.message_id
         user_id = payload.user_id
         guild_id = payload.guild_id
@@ -510,6 +606,10 @@ class Events(commands.Cog):
         if not user: return
 
         data = await bot.db.select("*", "mods", where={"guild_id": message_id, "type": "reaction", "name": emoji})
+        if not data and emoji_name:
+            data = await bot.db.select("*", "mods", where={"guild_id": message_id, "type": "reaction", "name": emoji_name})
+        if not data and emoji_id:
+            data = await bot.db.select("*", "mods", where={"guild_id": message_id, "type": "reaction", "name": emoji_id})
         roles = user.roles
         if data and data["arguments"]:
             for role_id in data["arguments"]:
